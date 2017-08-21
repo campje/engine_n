@@ -5,22 +5,42 @@
     
 */
 
-// MATH FUNCTIONS
 
-function log(arg) {
-    console.log(arg);
-}
+// LOGS
+
+var errors = {
+    unknownKey: "key is unknown, you can't get the file. Make sure that the file name is a valid string.",
+    loadError: "cannot be loaded, request error.",
+    unknownFormat: "Sorry, this file format is not supported."
+};
+
+
+// MATH FUNCTIONS
 
 function deltaSpeed(vel, delta) {
     return Math.round((vel * delta * 60) / 1000);
 }
 
-function sizeInTile(number, tilesize) {
-    return number * tilesize;
-}
-
 function randomBetweenNumbers(min, max) {
     return Math.floor((max - min) * Math.random()) + min;
+}
+
+function isNegative(nbr) {
+    if (nbr < 0) {
+        return true;
+    }
+}
+
+function isPositive(nbr) {
+    if (nbr > 0) {
+        return true;
+    }
+}
+
+function isNull(nbr) {
+    if (nbr === 0) {
+        return true;
+    }
 }
 
 function minimumBetweenNumbers(first, second) {
@@ -61,18 +81,20 @@ function scale(width, height, factor) {
 // PHYSICS
 
 
-function OnAABBColision(first, second, callbck) {
+function on2AABBColision(aabb1, aabb2) {
 
-    if ((first.x >= second.x + second.width)||(first.x + first.width <= second.x)||(first.y >= second.y + second.height)||(first.y + first.height <= second.y))  {
+    if ((aabb1.x >= aabb2.x + aabb2.width) || (aabb1.x + aabb1.width <= aabb2.x) || (aabb1.y >= aabb2.y + aabb2.height) || (aabb1.y + aabb1.height <= aabb2.y)) {
+        return false;
     } else {
-        callbck();
+        return true;
     }
 
 }
 
-function onSideAABBColision(first, second, callbckobj) {
-    /* callbckobj.top() callbckobj.bottom() callbckobj.left() callbckobj.right() */
+function onPointAABBColision(point, aabb) {
+
 }
+
 
 // GAME INSTANCE
 
@@ -109,10 +131,6 @@ function Game(model) {
     };
 }
 
-Game.prototype.accessContext = function () {
-    return this.context;
-};
-
 Game.prototype.run = function () {
     this.tick();
 };
@@ -138,7 +156,7 @@ Game.prototype.clearCanvas = function () {
 Game.prototype.load = function (arr, callback) {
     this.askedFiles = arr;
     this.loaderCallback = callback;
-
+    var typefounded = false;
     //identify file type
     for (var i = 0; i < this.askedFiles.length; i++) {
         for (var o = 0; o < this.imagesFormats.length; o++) {
@@ -148,6 +166,7 @@ Game.prototype.load = function (arr, callback) {
                     file: this.askedFiles[i],
                     key: this.askedFiles[i].split('/').reverse()[0].split('.')[0]
                 });
+                typefounded = true;
             }
         }
         for (var e = 0; e < this.soundsFormats.length; e++) {
@@ -157,6 +176,7 @@ Game.prototype.load = function (arr, callback) {
                     file: this.askedFiles[i],
                     key: this.askedFiles[i].split('/').reverse()[0].split('.')[0]
                 });
+                typefounded = true;
             }
         }
         for (var a = 0; a < this.documentsFormats.length; a++) {
@@ -166,8 +186,13 @@ Game.prototype.load = function (arr, callback) {
                     file: this.askedFiles[i],
                     key: this.askedFiles[i].split('/').reverse()[0].split('.')[0]
                 });
+                typefounded = true;
             }
         }
+    }
+
+    if (typefounded === false) {
+        console.log(errors.unknownFormat);
     }
 
     //loading all files
@@ -186,7 +211,7 @@ Game.prototype.load = function (arr, callback) {
 
                     }.bind(this), false);
                     img.addEventListener('error', function (e) {
-                        console.error(this.requiredFiles[i].file + " cannot be loaded");
+                        console.error(this.requiredFiles[i].file + errors.loadError);
                     }.bind(this), false);
                     img.src = this.requiredFiles[i].file;
 
@@ -205,7 +230,7 @@ Game.prototype.load = function (arr, callback) {
                                 this.loaderCallback();
                             }
                         } else if (xhr.readyState === XMLHttpRequest.DONE && xhr.status != 200) {
-                            console.error(this.requiredFiles[i].file + " cannot be loaded");
+                            console.error(this.requiredFiles[i].file + errors.loadError);
                         }
                     }.bind(this), false);
 
@@ -224,7 +249,7 @@ Game.prototype.load = function (arr, callback) {
                         }
                     }.bind(this), false);
                     sound.addEventListener('error', function (e) {
-                        console.error(this.requiredFiles[i].file + " cannot be loaded");
+                        console.error(this.requiredFiles[i].file + errors.loadError);
                     }.bind(this), false);
                     sound.src = this.requiredFiles[i].file;
                     break;
@@ -238,7 +263,7 @@ Game.prototype.getFile = function (key) {
     if (this.files[key]) {
 
     } else {
-        console.error(key + ": unknown key can't access file");
+        console.error(key + errors.unknownKey);
     }
     return this.files[key];
 };
@@ -263,13 +288,19 @@ Game.prototype.SYtoY = function (y) {
     return y + this.camera.y;
 };
 
+Game.prototype.cameraFollow = function (model) {
+    // model.x, y width, height
+    this.camera.x = model.x - (this.canvas.width / 2);
+    this.camera.y = model.y - (this.canvas.height / 2);
+};
+
 function Sprite(model) {
 
     this.image = model.image;
-    this.width = this.image.width;
-    this.height = this.image.height;
-    this.frameW = this.width / model.frames;
-    this.frameH = this.height / model.animations;
+    this.sheetWidth = this.image.width;
+    this.sheetHeight = this.image.height;
+    this.width = this.sheetWidth / model.frames;
+    this.height = this.sheetHeight / model.animations;
     this.animationNumber = model.animations;
     this.frameIndex = 0;
     this.framesNumber = model.frames;
@@ -281,12 +312,61 @@ function Sprite(model) {
     this.y = model.y;
     this.sx;
     this.sy;
+    this.askedRightVel;
+    this.askedLeftVel;
+    this.askedTopVel;
+    this.askedBottomVel;
+    this.xvel = 0;
+    this.yvel = 0;
     this.scaleFactor = model.scale;
+    this.game = model.game;
+    this.cgBottom = true;
+    this.cgTop = true;
+    this.cgLeft = true;
+    this.cgRight = true;
+    this.colideMap = false;
+    this.colisionsTiles;
+    this.gravity;
+
 }
 
-Sprite.prototype.update = function (game) {
-    this.sx = game.XtoSX(this.x);
-    this.sy = game.YtoSY(this.y);
+Sprite.prototype.update = function () {
+
+
+    if (this.colideMap !== false) {
+        this.colideMap.colideWith(this, this.colisionsTiles);
+    }
+
+
+    if (this.askedLeftVel !== 0) {
+        if (this.cgLeft === true) {
+            this.x -= this.askedLeftVel;
+        } 
+
+    }
+
+    if (this.askedRightVel !== 0) {
+
+        if (this.cgRight === true) {
+            this.x += this.askedRightVel;
+        } 
+
+    }
+
+    if (this.askedBottomVel !== 0) {
+
+        if (this.cgBottom === true) {
+            this.y += this.askedBottomVel;
+        } 
+    }
+
+    if (this.askedTopVel !== 0) {
+        
+        if (this.cgTop === true) {
+            this.y -= this.askedTopVel;   
+        }
+    }
+
     this.tickCount += 1;
     if (this.tickCount > this.tickPerFrame) {
         this.tickCount = 0;
@@ -297,19 +377,22 @@ Sprite.prototype.update = function (game) {
         }
     }
 
+    this.sx = this.game.XtoSX(this.x);
+    this.sy = this.game.YtoSY(this.y);
+
 };
 
-Sprite.prototype.render = function (currentAnimation, game) {
-    game.context.drawImage(
+Sprite.prototype.render = function (currentAnimation) {
+    this.game.context.drawImage(
         this.image,
-        this.frameIndex * this.frameW,
-        currentAnimation * this.frameH,
-        this.frameW,
-        this.frameH,
+        this.frameIndex * this.width,
+        currentAnimation * this.height,
+        this.width,
+        this.height,
         this.sx,
         this.sy,
-        this.frameW * this.scaleFactor,
-        this.frameH * this.scaleFactor
+        this.width * this.scaleFactor,
+        this.height * this.scaleFactor
     );
 };
 
@@ -321,6 +404,31 @@ Sprite.prototype.stopAnimation = function () {
 
 Sprite.prototype.restartAnimation = function () {
     this.loop = true;
+};
+
+Sprite.prototype.moveLeft = function (askedVel) {
+    this.askedLeftVel = askedVel;
+    this.cgRight = true;
+};
+
+Sprite.prototype.moveRight = function (askedVel) {
+    this.askedRightVel = askedVel;
+    this.cgLeft = true;
+};
+
+Sprite.prototype.moveBottom = function (askedVel) {
+    this.askedBottomVel = askedVel;
+    this.cgTop = true;
+};
+
+Sprite.prototype.moveTop = function (askedVel) {
+    this.askedTopVel = askedVel;
+    this.cgBottom = true;
+};
+
+Sprite.prototype.colideWithMap = function(colideMap, colisionsTile) {
+    this.colideMap = colideMap;
+    this.colisionsTiles = colisionsTile;
 };
 
 
@@ -344,6 +452,7 @@ function ParticleEmitter(model) {
     this.particle.vx = 0;
     this.particle.vy = 0;
     this.mode = this.model.mode;
+    this.game = model.game;
 }
 
 ParticleEmitter.prototype.addParticles = function (pnumber) {
@@ -368,12 +477,12 @@ ParticleEmitter.prototype.addParticles = function (pnumber) {
     }
 };
 
-ParticleEmitter.prototype.update = function (game) {
-    this.sx = game.XtoSX(this.x);
-    this.sy = game.YtoSY(this.y);
+ParticleEmitter.prototype.update = function () {
+    this.sx = this.game.XtoSX(this.x);
+    this.sy = this.game.YtoSY(this.y);
     for (var i = 0; i < this.particles.length; i++) {
-        this.particles[i].sx = game.XtoSX(this.particles[i].x);
-        this.particles[i].sy = game.YtoSY(this.particles[i].y);
+        this.particles[i].sx = this.game.XtoSX(this.particles[i].x);
+        this.particles[i].sy = this.game.YtoSY(this.particles[i].y);
         this.particles[i].x += this.particles[i].vx;
         this.particles[i].y += this.particles[i].vy;
         this.particles[i].vy += this.particles[i].gravity;
@@ -384,9 +493,9 @@ ParticleEmitter.prototype.update = function (game) {
     }
 };
 
-ParticleEmitter.prototype.render = function (game) {
+ParticleEmitter.prototype.render = function () {
     for (var i = 0; i < this.particles.length; i++) {
-        game.context.drawImage(
+        this.game.context.drawImage(
             this.particles[i].image,
             this.particles[i].sx,
             this.particles[i].sy,
@@ -414,6 +523,8 @@ TileSet.prototype.getY = function (num) {
 
 
 function TileMap(model) {
+
+    this.game = model.game;
     //tileset
     this.tilesetImage = model.tileset;
     this.tileSize = model.tilesize;
@@ -427,6 +538,7 @@ function TileMap(model) {
     this.mapWidthInPixels = this.mapWidthInTiles * this.tileSize;
     this.mapHeightInPixels = this.mapHeightInTiles * this.tileSize;
     this.scaleFactor = model.scale;
+    this.displaySize = this.tileSize * this.scaleFactor;
 }
 
 TileMap.prototype.getX = function (num, scale) {
@@ -437,48 +549,156 @@ TileMap.prototype.getY = function (num, scale) {
     return Math.floor((num - 1) / (this.mapWidthInPixels / this.tileSize)) * this.tileSize * scale;
 };
 
-TileMap.prototype.getTile = function (game, x, y) {
-    return this.mapData.map[Math.round((y / this.tileSize)) * this.mapData.cols + Math.round((x / this.tileSize))];
+TileMap.prototype.getTile = function (x, y) {
+    return this.mapData.map[Math.round((y / this.displaySize)) * this.mapData.cols + Math.round((x / this.displaySize))];
 };
 
-TileMap.prototype.getTileCoord = function (game, x, y) {
+TileMap.prototype.getTileIndex = function(x,y) {
+  return Math.round((y / this.displaySize)) * this.mapData.cols + Math.round((x / this.displaySize));
+};
+
+TileMap.prototype.replaceTile = function(index, tile) {
+  this.mapData.map[index] = tile;  
+};
+
+TileMap.prototype.getTileCoord = function (x, y) {
     return {
-        x: Math.round(x / this.tileSize) * this.tileSize,
-        y: Math.round(y / this.tileSize) * this.tileSize
+        x: Math.round(x / this.displaySize) * this.displaySize,
+        y: Math.round(y / this.displaySize) * this.displaySize
     }
-}
+};
 
 
-TileMap.prototype.render = function (game) {
+TileMap.prototype.render = function () {
 
     for (var i = 0; i < this.mapData.map.length; i++) {
 
 
-        if (this.getX(i + 1, this.scaleFactor) - game.camera.x + this.tileSize < 0 || this.getY(i + 1, this.scaleFactor) - game.camera.y + this.tileSize < 0 ||
-            this.getX(i + 1, this.scaleFactor) - game.camera.x > game.canvasWidth ||
-            this.getX(i + 1, this.scaleFactor) - game.camera.x > game.canvasHeight) {
-            // avoid useless drawcalls
-        } else {
-
-            game.context.drawImage(
-                this.tilesetImage,
-                this.tileset.getX(this.mapData.map[i]),
-                this.tileset.getY(this.mapData.map[i]),
-                this.tileSize,
-                this.tileSize,
-                this.getX(i + 1, this.scaleFactor) - game.camera.x,
-                this.getY(i + 1, this.scaleFactor) - game.camera.y,
-                this.tileSize * this.scaleFactor,
-                this.tileSize * this.scaleFactor
-            );
-
-        }
+        this.game.context.drawImage(
+            this.tilesetImage,
+            this.tileset.getX(this.mapData.map[i]),
+            this.tileset.getY(this.mapData.map[i]),
+            this.tileSize,
+            this.tileSize,
+            this.getX(i + 1, this.scaleFactor) - this.game.camera.x,
+            this.getY(i + 1, this.scaleFactor) - this.game.camera.y,
+            this.tileSize * this.scaleFactor,
+            this.tileSize * this.scaleFactor
+        );
 
     }
 
+
 };
 
-TileMap.prototype.colideWith = function (model) { // model.x model.y model.width model.height
+TileMap.prototype.tilesAround = function (el, uwTiles) {
+    var tilesAroundArr = [];
+    var ds = this.displaySize;
+
+    for (var i = 0; i < Math.ceil((el.width * el.scaleFactor + ds * 2) / ds); i++) {
+        for (var e = 0; e < Math.ceil((el.height * el.scaleFactor + ds * 2) / ds); e++) {
+
+            if (uwTiles.indexOf(this.getTile(el.x - ds + i * ds, el.y - ds + e * ds)) > -1) {
+
+                tilesAroundArr.push({
+                    x: this.getTileCoord(el.x - ds + i * ds, el.y - ds + e * ds).x,
+                    y: this.getTileCoord(el.x - ds + i * ds, el.y - ds + e * ds).y,
+                    tile: this.getTile(el.x - ds + i * ds, el.y - ds + e * ds),
+                    width: this.displaySize,
+                    height: this.displaySize,
+                    walkable: false
+                });
+
+
+            } else {
+                tilesAroundArr.push({
+                    x: this.getTileCoord(el.x - ds + i * ds, el.y - ds + e * ds).x,
+                    y: this.getTileCoord(el.x - ds + i * ds, el.y - ds + e * ds).y,
+                    tile: this.getTile(el.x - ds + i * ds, el.y - ds + e * ds),
+                    width: this.displaySize,
+                    height: this.displaySize,
+                    walkable: true
+                });
+            }
+
+        }
+    }
+
+    return tilesAroundArr;
+};
+
+
+TileMap.prototype.colideWith = function (el, uwTiles) { // el.x el.y el.width el.height
+    var tilesAround = this.tilesAround(el, uwTiles);
+    var ds = this.displaySize;
+
+    
+    if (isNull(el.askedBottomVel) && isNull(el.askedTopVel) && isNull(el.askedLeftVel) && isNull(el.askedRightVel)) {
+        el.cgTop = true;
+        el.cgBottom = true;
+        el.cgRight = true;
+        el.cgLeft = true;
+    }
+
+    for (var i = 0; i < tilesAround.length; i++) {
+        
+        if (tilesAround[i].walkable === false) {
+            if (isPositive(el.askedBottomVel)) {
+                // going bottom
+                
+                if (on2AABBColision({
+                        x: el.x,
+                        y: el.y + el.askedBottomVel,
+                        width: el.width * el.scaleFactor,
+                        height: el.height * el.scaleFactor
+                    }, tilesAround[i])) {
+                
+                    el.cgBottom = false;
+                    el.y = tilesAround[i].y - el.height * el.scaleFactor;   
+                }
+            }
+            if (isPositive(el.askedTopVel)) {
+                // going top
+                if (on2AABBColision({
+                        x: el.x,
+                        y: el.y - el.askedTopVel,
+                        width: el.width * el.scaleFactor,
+                        height: el.height * el.scaleFactor
+                    }, tilesAround[i])) {
+                    
+                    el.y = tilesAround[i].y + tilesAround[i].height;
+                    el.cgTop = false;
+                }
+            }
+            if (isPositive(el.askedRightVel)) {
+                // going right
+                if (on2AABBColision({
+                        x: el.x + el.askedRightVel,
+                        y: el.y,
+                        width: el.width * el.scaleFactor,
+                        height: el.height * el.scaleFactor
+                    }, tilesAround[i])) {
+                    
+                    el.x = tilesAround[i].x - el.width * el.scaleFactor;
+                    el.cgRight = false;
+ 
+                }
+            }
+            if (isPositive(el.askedLeftVel)) {
+                //going left
+                if (on2AABBColision({
+                        x: el.x - el.askedLeftVel,
+                        y: el.y,
+                        width: el.width * el.scaleFactor,
+                        height: el.height * el.scaleFactor
+                    }, tilesAround[i])) {
+
+                    el.x = tilesAround[i].x + tilesAround[i].width;
+                    el.cgLeft = false;
+                }
+            }
+        }
+    }
 
 };
 
@@ -555,12 +775,13 @@ function KeyboardHandler(game) {
     this.ARROWLEFT = 37;
     this.ARROWRIGHT = 39;
     this.keyboardEvents = {};
+    this.askedEvents = [];
 }
 
 KeyboardHandler.prototype.listen = function (arr) {
     document.addEventListener('keydown', this.on_KeyDown.bind(this));
     document.addEventListener('keyup', this.on_KeyUp.bind(this));
-
+    this.askedEvents = arr;
     for (var i = 0; i < arr.length; i++) {
         this.keyboardEvents[arr[i]] = false;
     }
@@ -581,6 +802,16 @@ KeyboardHandler.prototype.on_KeyUp = function (event) {
 KeyboardHandler.prototype.isDown = function (keyCode) {
     return this.keyboardEvents[keyCode];
 };
+
+KeyboardHandler.prototype.allUp = function () {
+    var allup = true;
+    for (var i = 0; i < this.askedEvents.length; i++) {
+        if (this.keyboardEvents[this.askedEvents[i]] === true) {
+            allup = false;
+        }
+    }
+    return allup;
+}
 
 function TouchHandler(game) {
     this.offLeft = game.canvas.offsetLeft;
@@ -603,7 +834,7 @@ TouchHandler.prototype.listen = function (arr) {
         } else if (ev === "touchmove") {
             document.addEventListener('touchmove', function (e) {
                 this.x = e.touches[0].pageX - this.offLeft;
-                this.y = e.touches[0].pageY - this.offTop;;
+                this.y = e.touches[0].pageY - this.offTop;
             }.bind(this));
         }
     }
